@@ -1,0 +1,4 @@
+
+ifeq ($(CHIP),nRF51422-QFAC)
+LINKER_FILE_SUFFIX=xxac
+endif
