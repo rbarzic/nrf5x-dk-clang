@@ -11,6 +11,7 @@ DEVICE = NRF52
 
 
 CC=clang
+INC_PATHS+= -I/opt/newlib/2.2.0-1/arm-none-eabi/include
 
 #BOARD=BOARD_PCA10028
 

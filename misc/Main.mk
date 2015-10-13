@@ -8,6 +8,7 @@ SDK_PATH := $(SDK_INSTALL_DIR)/$(SDK_VERSION)
 GNU_PREFIX ?= arm-none-eabi
 
 CC       		?= "$(GNU_PREFIX)-gcc"
+CC_AS       		?= "$(GNU_PREFIX)-gcc"
 AS       		:= "$(GNU_PREFIX)-as"
 AR       		:= "$(GNU_PREFIX)-ar" -r
 LD       		:= "$(GNU_PREFIX)-gcc"
@@ -33,19 +34,26 @@ INC_PATHS += -I$(SDK_PATH)/examples/bsp
 
 # FIXME : nRF51 options are incomplete
 ifeq ($(DEVICE),NRF51)
-CPUFLAGS += -mthumb -mcpu=cortex-m0 -march=armv6-m
+CPUFLAGS_LLVM += -mthumb -mcpu=cortex-m0 -march=armv6-m
+CPUFLAGS_GCC += -mthumb -mcpu=cortex-m0 -march=armv6-m
+
 endif
 
 ifeq ($(DEVICE),NRF52)
-CPUFLAGS +=  -Wall -m32 -emit-llvm -target arm-none-eabi -mcpu=cortex-m4 -mthumb -ffreestanding -nostdlib
+CPUFLAGS_LLVM +=  -Wall -m32  -target arm-none-eabi -mcpu=cortex-m4 -mthumb -ffreestanding -nostdlib -mfloat-abi=hard
+CPUFLAGS_GCC +=  -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -ffunction-sections -fdata-sections -fno-strict-aliasing -fno-builtin --short-enums
 endif
 
 
 
-CFLAGS += -std=gnu99 -c $(CPUFLAGS) -Wall -D$(DEVICE) -D$(BOARD)   -MD -O3
-CFLAGS += $(INC_PATHS)
+CFLAGS_LLVM += -std=gnu99 -c $(CPUFLAGS_LLVM) -Wall -D$(DEVICE) -D$(BOARD)   -MD -O3
+CFLAGS_GCC += -std=gnu99 -c $(CPUFLAGS_GCC) -Wall -D$(DEVICE) -D$(BOARD)   -MD -O3
 
-CFLAGS += -DCONFIG_GPIO_AS_PINRESET
+CFLAGS_LLVM += $(INC_PATHS)
+CFLAGS_GCC += $(INC_PATHS)
+
+CFLAGS_LLVM += -DCONFIG_GPIO_AS_PINRESET
+CFLAGS_GCC += -DCONFIG_GPIO_AS_PINRESET
 
 SRCS = $(C_SOURCE_FILES)
 OBJS = $(C_SOURCE_FILES:.c=.o)
@@ -101,7 +109,7 @@ endif  # NRF52
 
 LINKER_SCRIPT_TOP_DIR ?= $(SDK_PATH)/components/toolchain/gcc
 
-LDFLAGS += $(CPUFLAGS)  -T $(LINKER_SCRIPT) -L $(LINKER_SCRIPT_TOP_DIR)
+LDFLAGS += $(CPUFLAGS_GCC)  -T $(LINKER_SCRIPT) -L $(LINKER_SCRIPT_TOP_DIR)
 
 # from
 FLASH_START_ADDRESS = $(shell $(OBJDUMP) -h $(ELF) -j .text | grep .text | awk '{print $$4}')
@@ -124,10 +132,10 @@ print_flash_address:
 
 %.o: %.c
 
-	$(CC)  $(CFLAGS) $< -o $@
+	$(CC)  $(CFLAGS_LLVM) $< -o $@
 
 %.os: %.s
-	$(CC) -x assembler-with-cpp$  $(CFLAGS) $< -o $@
+	$(CC_AS) -x assembler-with-cpp$  $(CFLAGS_GCC) $< -o $@
 
 
 
